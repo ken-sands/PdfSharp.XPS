@@ -1,6 +1,8 @@
 PdfSharp.XPS
 ============
 
-PdfSharp.XPS library copied from  nathanpjones http://www.nathanpjones.com/wp/2013/03/output-to-pdf-in-wpf-for-free/
+PdfSharp.XPS library http://www.pdfsharp.net/
+
+incorporates fixes found in various places along with my own fixes to the tiling brush stuff.
 
 PDFsharp.XPS is published under the MIT License.
