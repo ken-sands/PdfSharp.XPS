@@ -3,6 +3,8 @@ using PdfSharp.Pdf;
 using PdfSharp.Pdf.Advanced;
 using System.Diagnostics;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+//using System.Drawing;
 
 namespace PdfSharp.Xps.Rendering
 {
@@ -41,17 +43,58 @@ namespace PdfSharp.Xps.Rendering
 
         PdfTilingPattern BuildPattern(ImageBrush brush, XMatrix transform)
         {
-          // Bounding box lays always at (0,0)
-          XRect bbox = new XRect(0, 0, brush.Viewport.Width, brush.Viewport.Height);
+          // Bounding box repects viewbox
+            //XRect bbox = new XRect(brush.Viewbox.X, brush.Viewbox.Y, brush.Viewbox.Width, brush.Viewbox.Height);
+           // double scalex = brush.Viewport.Width / brush.Viewbox.Width * 96 / pdfForm.DpiX;
+            //BitmapImage src = new BitmapImage();
+            //BitmapSource cropbrush = BitmapSource.Create()
+            //CroppedBitmap cropbrush = new CroppedBitmap((BitmapSource)brush.ImageSource, new System.Windows.Int32Rect((int)brush.Viewbox.X, (int)brush.Viewbox.Y, (int)brush.Viewbox.Width, (int)brush.Viewbox.Height));
+            //using (var fileStream = new System.IO.FileStream("c:\\fullimage.png", System.IO.FileMode.Create))
+            //{
+            //    BitmapEncoder encoder = new PngBitmapEncoder();
+            //    encoder.Frames.Add(BitmapFrame.Create((BitmapSource)brush.ImageSource));
+            //    encoder.Save(fileStream);
+            //}
+            double scaledpix = ((BitmapSource)brush.ImageSource).DpiX;
+            double scaledpiy = ((BitmapSource)brush.ImageSource).DpiY;
+           
+
+            CroppedBitmap cropbrush = new CroppedBitmap((BitmapSource)brush.ImageSource, new System.Windows.Int32Rect((int)((brush.Viewbox.X / 96) * scaledpix), (int)((brush.Viewbox.Y / 96) * scaledpiy), (int)((brush.Viewbox.Width / 96) * scaledpiy), (int)((brush.Viewbox.Height / 96) * scaledpiy)));
+            //cropbrush.DpiX = scaledpix;
+            //cropbrush.DpiY = scaledpiy;
+            brush.ImageSource = cropbrush;
+            //brush.Viewport = new System.Windows.Rect(0, 0, brush.Viewport.Width, brush.Viewport.Height);
+            brush.Viewbox = new System.Windows.Rect(0, 0, brush.Viewbox.Width, brush.Viewbox.Height);
+
+            //brush = new ImageBrush(cropbrush);
+
+            //BitmapSource
+            //BitmapSource. cropbrushbitmap = new BitmapSource(cropbrush);
+
+
+            //using (var fileStream = new System.IO.FileStream("c:\\cropimage.png", System.IO.FileMode.Create))
+            //{
+             //   BitmapEncoder encoder = new PngBitmapEncoder();
+             //   encoder.Frames.Add(BitmapFrame.Create(cropbrush));
+             //   encoder.Save(fileStream);
+            //}
+
+            //XRect bbox = new XRect(brush.Viewport.X - brush.Viewbox.X, brush.Viewport.Y - brush.Viewbox.Y, brush.Viewbox.Width, brush.Viewbox.Height);
+            //XRect bbox = new XRect((brush.Viewbox.X / 96) * scaledpix, (brush.Viewbox.Y / 96) * scaledpiy, (brush.Viewbox.Width / 96) * scaledpix, (brush.Viewbox.Height / 96) * scaledpiy);
+            XRect bbox = new XRect(0, 0, (brush.Viewport.Width / 96) * scaledpix, (brush.Viewport.Height / 96) * scaledpiy);
+
 #if true
           XMatrix matrix = transform;
-          matrix.Prepend(new XMatrix(1, 0, 0, 1, brush.Viewport.X, brush.Viewport.Y));
-          if (brush.Transform != null)
-          {
-            matrix.Prepend(new XMatrix(brush.Transform.Value.M11, brush.Transform.Value.M12, brush.Transform.Value.M21,
-            brush.Transform.Value.M22, brush.Transform.Value.OffsetX,
-            brush.Transform.Value.OffsetY));
-          }
+//this only needs to be a translate and to offset the viewbox viewport difference
+         matrix.TranslatePrepend(brush.Viewport.X, brush.Viewport.Y);
+          //matrix.TranslatePrepend((brush.Viewport.X - brush.Viewbox.X)+2, (brush.Viewport.Y - brush.Viewbox.Y)+2);
+
+         if (brush.Transform != null)
+         {
+             matrix.Prepend(new XMatrix(brush.Transform.Value.M11, brush.Transform.Value.M12, brush.Transform.Value.M21,
+             brush.Transform.Value.M22, brush.Transform.Value.OffsetX,
+             brush.Transform.Value.OffsetY));
+         }
 #else
       double c = 1;
       XMatrix matrix = new XMatrix(1 * c, 0, 0, 1 * c, brush.Viewport.X * c, brush.Viewport.Y * c); // HACK: 480
@@ -62,8 +105,9 @@ namespace PdfSharp.Xps.Rendering
       //matrix.Append(t);
       matrix = t;
 #endif
-          double xStep = brush.Viewport.Width;
-          double yStep = brush.Viewport.Height;
+          double xStep = brush.Viewport.Width;// (brush.Viewbox.Width / 96) * scaledpix; //* (brush.TileMode == TileMode.None ? 2 : 1);
+          double yStep = brush.Viewport.Height;// (brush.Viewbox.Height / 96) * scaledpiy; //* (brush.TileMode == TileMode.None ? 2 : 1);
+
 
           // PdfTilingPattern
           //<<
@@ -122,12 +166,15 @@ namespace PdfSharp.Xps.Rendering
           //writer.WriteClip(bbox);
 
           XMatrix transformation = new XMatrix();
+          //double dx = brush.Viewport.Width / brush.Viewbox.Width * 96 / pdfForm.DpiX;
+          //double dy = brush.Viewport.Height / brush.Viewbox.Height * 96 / pdfForm.DpiY;
+
           double dx = brush.Viewport.Width / brush.Viewbox.Width * 96 / pdfForm.DpiX;
           double dy = brush.Viewport.Height / brush.Viewbox.Height * 96 / pdfForm.DpiY;
           transformation = new XMatrix(dx, 0, 0, dy, 0, 0);
           writer.WriteMatrix(transformation);
           writer.WriteGraphicsState(pdfExtGState);
-
+            
           string name = writer.Resources.AddForm(pdfForm);
           writer.WriteLiteral(name + " Do\n");
 
@@ -177,17 +224,17 @@ namespace PdfSharp.Xps.Rendering
           PdfFormXObject pdfForm = Context.PdfDocument.Internals.CreateIndirectObject<PdfFormXObject>();
           XImage ximage = ImageBuilder.FromImageBrush(Context, brush);
           ximage.Interpolate = false;
-          double width = ximage.PixelWidth;
-          double height = ximage.PixelHeight;
+          double width = ximage.PixelWidth ;/// ximage.HorizontalResolution) * 96;
+          double height = ximage.PixelHeight;// / ximage.HorizontalResolution) *96;
           pdfForm.DpiX = ximage.HorizontalResolution;
-          pdfForm.DpiY = ximage.VerticalResolution;
+          pdfForm.DpiY =  ximage.VerticalResolution;
 
           // view box in point
           // XRect box = new XRect(brush.Viewbox.X * 0.75, brush.Viewbox.Y * 0.75, brush.Viewbox.Width * 0.75, brush.Viewbox.Height * 0.75);
-          XRect box = new XRect(0, 0, width, height);
+          //XRect box = new XRect(0, 0, width, height);
 
           pdfForm.Elements.SetRectangle(PdfFormXObject.Keys.BBox, new PdfRectangle(0, height, width, 0));
-          pdfForm.Elements.SetMatrix(PdfFormXObject.Keys.Matrix, new XMatrix());
+          //pdfForm.Elements.SetMatrix(PdfFormXObject.Keys.Matrix, new XMatrix());
 
           PdfContentWriter writer = new PdfContentWriter(Context, pdfForm);
 
@@ -200,7 +247,7 @@ namespace PdfSharp.Xps.Rendering
           writer.BeginContentRaw();
 
           string imageID = writer.Resources.AddImage(new PdfImage(Context.PdfDocument, ximage));
-          XMatrix matrix = new XMatrix();
+          //XMatrix matrix = new XMatrix();
           //double scaleX = brush.Viewport.Width / brush.Viewbox.Width * 4 / 3 * ximage.PointWidth;
           //double scaleY = brush.Viewport.Height / brush.Viewbox.Height * 4 / 3 * ximage.PointHeight;
           //matrix.TranslatePrepend(-brush.Viewbox.X, -brush.Viewbox.Y);
@@ -211,7 +258,7 @@ namespace PdfSharp.Xps.Rendering
           //double scaleY = 96 / ximage.VerticalResolution;
           //width *= scaleX;
           //height *= scaleY;
-          matrix = new XMatrix(width, 0, 0, -height, 0, height);
+          XMatrix matrix = new XMatrix(width, 0, 0, -height, 0, height);
           writer.WriteLiteral("q\n");
           // TODO:WriteClip(path.Data);
           //formWriter.WriteLiteral("{0:0.###} 0 0 -{1:0.###} {2:0.###} {3:0.###} cm 100 Tz {4} Do Q\n",
