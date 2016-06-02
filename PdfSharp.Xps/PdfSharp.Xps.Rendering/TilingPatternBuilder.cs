@@ -4,6 +4,7 @@ using PdfSharp.Pdf.Advanced;
 using System.Diagnostics;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System;
 //using System.Drawing;
 
 namespace PdfSharp.Xps.Rendering
@@ -57,14 +58,17 @@ namespace PdfSharp.Xps.Rendering
             //}
             double scaledpix = ((BitmapSource)brush.ImageSource).DpiX;
             double scaledpiy = ((BitmapSource)brush.ImageSource).DpiY;
-           
 
-            CroppedBitmap cropbrush = new CroppedBitmap((BitmapSource)brush.ImageSource, new System.Windows.Int32Rect((int)((brush.Viewbox.X / 96) * scaledpix), (int)((brush.Viewbox.Y / 96) * scaledpiy), (int)((brush.Viewbox.Width / 96) * scaledpiy), (int)((brush.Viewbox.Height / 96) * scaledpiy)));
-            //cropbrush.DpiX = scaledpix;
-            //cropbrush.DpiY = scaledpiy;
-            brush.ImageSource = cropbrush;
-            //brush.Viewport = new System.Windows.Rect(0, 0, brush.Viewport.Width, brush.Viewport.Height);
-            brush.Viewbox = new System.Windows.Rect(0, 0, brush.Viewbox.Width, brush.Viewbox.Height);
+            if (brush.Viewbox.X > 0 || brush.Viewbox.Y > 0)
+            {
+                CroppedBitmap cropbrush = new CroppedBitmap((BitmapSource)brush.ImageSource, new System.Windows.Int32Rect((int)Math.Round((brush.Viewbox.X / 96) * scaledpix), (int)Math.Round((brush.Viewbox.Y / 96) * scaledpiy), (int)Math.Round((brush.Viewbox.Width / 96) * scaledpiy), (int)Math.Round((brush.Viewbox.Height / 96) * scaledpiy)));
+                //cropbrush.DpiX = scaledpix;
+                //cropbrush.DpiY = scaledpiy;
+                brush.ImageSource = cropbrush;
+                //brush.Viewport = new System.Windows.Rect(0, 0, brush.Viewport.Width, brush.Viewport.Height);
+                //brush.Viewbox = new System.Windows.Rect(0, 0, ((Math.Round((brush.Viewbox.Width / 96) * scaledpiy)) / scaledpiy * 96) , brush.Viewbox.Height);
+                brush.Viewbox = new System.Windows.Rect(0, 0, brush.Viewbox.Width, brush.Viewbox.Height);
+            }
 
             //brush = new ImageBrush(cropbrush);
 
@@ -81,12 +85,13 @@ namespace PdfSharp.Xps.Rendering
 
             //XRect bbox = new XRect(brush.Viewport.X - brush.Viewbox.X, brush.Viewport.Y - brush.Viewbox.Y, brush.Viewbox.Width, brush.Viewbox.Height);
             //XRect bbox = new XRect((brush.Viewbox.X / 96) * scaledpix, (brush.Viewbox.Y / 96) * scaledpiy, (brush.Viewbox.Width / 96) * scaledpix, (brush.Viewbox.Height / 96) * scaledpiy);
-            XRect bbox = new XRect(0, 0, (brush.Viewport.Width / 96) * scaledpix, (brush.Viewport.Height / 96) * scaledpiy);
+            //XRect bbox = new XRect(0, 0, (brush.Viewport.Width / 96) * scaledpix, (brush.Viewport.Height / 96) * scaledpiy);
+            XRect bbox = new XRect(0, 0, brush.Viewport.Width, brush.Viewport.Height);
 
 #if true
           XMatrix matrix = transform;
 //this only needs to be a translate and to offset the viewbox viewport difference
-         matrix.TranslatePrepend(brush.Viewport.X, brush.Viewport.Y);
+          matrix.TranslatePrepend(brush.Viewport.X, brush.Viewport.Y);
           //matrix.TranslatePrepend((brush.Viewport.X - brush.Viewbox.X)+2, (brush.Viewport.Y - brush.Viewbox.Y)+2);
 
          if (brush.Transform != null)
@@ -105,8 +110,8 @@ namespace PdfSharp.Xps.Rendering
       //matrix.Append(t);
       matrix = t;
 #endif
-          double xStep = brush.Viewport.Width;// (brush.Viewbox.Width / 96) * scaledpix; //* (brush.TileMode == TileMode.None ? 2 : 1);
-          double yStep = brush.Viewport.Height;// (brush.Viewbox.Height / 96) * scaledpiy; //* (brush.TileMode == TileMode.None ? 2 : 1);
+          double xStep = brush.Viewport.Width+1;// (brush.Viewbox.Width / 96) * scaledpix; //* (brush.TileMode == TileMode.None ? 2 : 1);
+          double yStep = brush.Viewport.Height+1;// (brush.Viewbox.Height / 96) * scaledpiy; //* (brush.TileMode == TileMode.None ? 2 : 1);
 
 
           // PdfTilingPattern
